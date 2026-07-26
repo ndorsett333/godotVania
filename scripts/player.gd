@@ -23,7 +23,13 @@ func _physics_process(delta: float) -> void:
 		# character sideways on every turn. Scaling mirrors about the origin.
 		sprite.scale.x = -1.0 if direction < 0.0 else 1.0
 
-	if Input.is_action_pressed("move_up"):
+	# The sheet holds three aim angles, four walk frames each: forward (0-3),
+	# diagonal up (4-7), straight up (8-11). Standing while holding up aims
+	# straight up; walking while holding up aims along the diagonal.
+	var aiming_up := Input.is_action_pressed("move_up")
+	if aiming_up and direction != 0.0:
+		_play("walk_aim_up")
+	elif aiming_up:
 		_play("aim_up")
 	elif direction != 0.0:
 		_play("walk")
