@@ -13,11 +13,15 @@ export var gravity := 900.0
 # here, because physics integrates in 60Hz steps rather than continuously, so
 # this is the value that measures right in-engine rather than on paper.
 export var jump_velocity := 255.0
+# Minimum seconds between shots, so mashing the key cannot outpace the weapon.
+export var fire_cooldown := 0.25
 
 onready var sprite := $Sprite
 onready var anim := $AnimationPlayer
 
 var velocity := Vector2.ZERO
+
+var _fire_cooldown_left := 0.0
 
 
 func _physics_process(delta: float) -> void:
@@ -43,8 +47,10 @@ func _physics_process(delta: float) -> void:
 	var airborne := not is_on_floor()
 	var aim := _current_aim(direction, airborne)
 
-	if Input.is_action_just_pressed("fire"):
+	_fire_cooldown_left = max(0.0, _fire_cooldown_left - delta)
+	if Input.is_action_just_pressed("fire") and _fire_cooldown_left == 0.0:
 		_fire(aim)
+		_fire_cooldown_left = fire_cooldown
 
 	# The walk and run sheets share a layout: three aim angles, four frames each
 	# — forward (0-3), diagonal up (4-7), straight up (8-11). The jump sheet is
