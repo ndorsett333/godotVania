@@ -1,6 +1,6 @@
 extends KinematicBody2D
 
-export var speed := 90.0
+export var speed := 130.0
 export var gravity := 900.0
 
 onready var sprite := $Sprite
@@ -23,9 +23,12 @@ func _physics_process(delta: float) -> void:
 		# character sideways on every turn. Scaling mirrors about the origin.
 		sprite.scale.x = -1.0 if direction < 0.0 else 1.0
 
-	# The sheet holds three aim angles, four walk frames each: forward (0-3),
-	# diagonal up (4-7), straight up (8-11). Standing while holding up aims
-	# straight up; walking while holding up aims along the diagonal.
+	# Both sheets share a layout: three aim angles, four frames each — forward
+	# (0-3), diagonal up (4-7), straight up (8-11). Standing while holding up
+	# aims straight up; moving while holding up aims along the diagonal.
+	# Each animation keys its own texture and offset, since "walk" draws from
+	# the run sheet and the rest from the walk sheet, and the two sheets centre
+	# the body slightly differently.
 	var aiming_up := Input.is_action_pressed("move_up")
 	if aiming_up and direction != 0.0:
 		_play("walk_aim_up")
