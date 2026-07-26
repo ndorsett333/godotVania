@@ -2,6 +2,11 @@ extends KinematicBody2D
 
 export var speed := 130.0
 export var gravity := 900.0
+# Tuned so the soles clear the 31px-tall standing silhouette by ~3px at the
+# apex. The closed form v^2 / (2 * gravity) overstates the rise by about 2px
+# here, because physics integrates in 60Hz steps rather than continuously, so
+# this is the value that measures right in-engine rather than on paper.
+export var jump_velocity := 255.0
 
 onready var sprite := $Sprite
 onready var anim := $AnimationPlayer
@@ -14,6 +19,12 @@ func _physics_process(delta: float) -> void:
 
 	velocity.x = direction * speed
 	velocity.y += gravity * delta
+
+	# is_on_floor() reports the previous move_and_slide, which is what we want:
+	# the jump is authorised by where the body finished last frame.
+	if Input.is_action_just_pressed("jump") and is_on_floor():
+		velocity.y = -jump_velocity
+
 	velocity = move_and_slide(velocity, Vector2.UP)
 
 	if direction != 0.0:
@@ -23,14 +34,15 @@ func _physics_process(delta: float) -> void:
 		# character sideways on every turn. Scaling mirrors about the origin.
 		sprite.scale.x = -1.0 if direction < 0.0 else 1.0
 
-	# Both sheets share a layout: three aim angles, four frames each — forward
-	# (0-3), diagonal up (4-7), straight up (8-11). Standing while holding up
-	# aims straight up; moving while holding up aims along the diagonal.
-	# Each animation keys its own texture and offset, since "walk" draws from
-	# the run sheet and the rest from the walk sheet, and the two sheets centre
-	# the body slightly differently.
+	# The walk and run sheets share a layout: three aim angles, four frames each
+	# — forward (0-3), diagonal up (4-7), straight up (8-11). The jump sheet is
+	# five aim angles of a single airborne pose, so it has its own grid width.
+	# Every animation therefore keys its own texture, hframes and offset, since
+	# the sheets differ in column count and in how they centre the body.
 	var aiming_up := Input.is_action_pressed("move_up")
-	if aiming_up and direction != 0.0:
+	if not is_on_floor():
+		_play("jump")
+	elif aiming_up and direction != 0.0:
 		_play("walk_aim_up")
 	elif aiming_up:
 		_play("aim_up")
