@@ -1,5 +1,11 @@
 extends KinematicBody2D
 
+const Blaster := preload("res://scenes/projectiles/Blaster.tscn")
+
+# Which way the weapon points. Drives both the pose and where shots go, so the
+# two can never disagree.
+enum Aim { FORWARD, DIAGONAL, UP }
+
 export var speed := 130.0
 export var gravity := 900.0
 # Tuned so the soles clear the 31px-tall standing silhouette by ~3px at the
@@ -34,22 +40,73 @@ func _physics_process(delta: float) -> void:
 		# character sideways on every turn. Scaling mirrors about the origin.
 		sprite.scale.x = -1.0 if direction < 0.0 else 1.0
 
+	var airborne := not is_on_floor()
+	var aim := _current_aim(direction, airborne)
+
+	if Input.is_action_just_pressed("fire"):
+		_fire(aim)
+
 	# The walk and run sheets share a layout: three aim angles, four frames each
 	# — forward (0-3), diagonal up (4-7), straight up (8-11). The jump sheet is
 	# five aim angles of a single airborne pose, so it has its own grid width.
 	# Every animation therefore keys its own texture, hframes and offset, since
 	# the sheets differ in column count and in how they centre the body.
-	var aiming_up := Input.is_action_pressed("move_up")
-	if not is_on_floor():
+	if airborne:
 		_play("jump")
-	elif aiming_up and direction != 0.0:
+	elif aim == Aim.DIAGONAL:
 		_play("walk_aim_up")
-	elif aiming_up:
+	elif aim == Aim.UP:
 		_play("aim_up")
 	elif direction != 0.0:
 		_play("walk")
 	else:
 		_play("idle")
+
+
+func _current_aim(direction: float, airborne: bool) -> int:
+	# Airborne always draws the jump sheet's forward-facing frame, so the shot
+	# has to go forward too or the pose would lie about where you are aiming.
+	if airborne or not Input.is_action_pressed("move_up"):
+		return Aim.FORWARD
+	return Aim.DIAGONAL if direction != 0.0 else Aim.UP
+
+
+# Barrel tip for each pose, measured off the sprite sheets, in local pixels
+# with the character facing right.
+func _muzzle(aim: int) -> Vector2:
+	match aim:
+		Aim.UP:
+			return Vector2(-1, -37)
+		Aim.DIAGONAL:
+			return Vector2(11, -30)
+		_:
+			return Vector2(14, -23)
+
+
+func _aim_vector(aim: int) -> Vector2:
+	match aim:
+		Aim.UP:
+			return Vector2(0, -1)
+		Aim.DIAGONAL:
+			return Vector2(1, -1).normalized()
+		_:
+			return Vector2(1, 0)
+
+
+func _fire(aim: int) -> void:
+	var facing := -1.0 if sprite.scale.x < 0.0 else 1.0
+
+	var muzzle := _muzzle(aim)
+	muzzle.x *= facing
+
+	var dir := _aim_vector(aim)
+	dir.x *= facing
+
+	var bolt := Blaster.instance()
+	# Parent to the level, not to the player, so shots keep their own course
+	# instead of being dragged along by whatever the player does next.
+	get_parent().add_child(bolt)
+	bolt.launch(global_position + muzzle, dir)
 
 
 func _play(name: String) -> void:
