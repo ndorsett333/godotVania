@@ -8,6 +8,17 @@ var direction := Vector2.RIGHT
 var _travelled := 0.0
 
 
+func _ready() -> void:
+	connect("body_entered", self, "_on_body_entered")
+
+
+# One hit is fatal; there is no health to subtract from yet.
+func _on_body_entered(body: Node) -> void:
+	if body.is_in_group("enemies"):
+		body.queue_free()
+		queue_free()
+
+
 # Call after the bolt is in the tree, so global_position lands where intended.
 func launch(from: Vector2, dir: Vector2) -> void:
 	direction = dir.normalized()
