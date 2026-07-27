@@ -6,7 +6,7 @@
 [ext_resource path="res://assets/sprites/player/Voidster_Jump_R.png" type="Texture" id=4]
 
 [sub_resource type="RectangleShape2D" id=1]
-extents = Vector2( 8, 15 )
+extents = Vector2( 6, 15 )
 
 [sub_resource type="Animation" id=2]
 resource_name = "idle"
