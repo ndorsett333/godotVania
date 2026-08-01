@@ -3,6 +3,7 @@ extends KinematicBody2D
 const Blaster := preload("res://scenes/projectiles/Blaster.tscn")
 const CrouchTexture := preload("res://assets/sprites/player/Voidster_Crouch_R.png")
 const DamageTexture := preload("res://assets/sprites/player/Voidster_Damage_R.png")
+const JumpTexture := preload("res://assets/sprites/player/Voidster_Jump_R.png")
 
 # Which way the weapon points. Drives both the pose and where shots go, so the
 # two can never disagree.
@@ -98,7 +99,12 @@ func _physics_process(delta: float) -> void:
 	elif crouching:
 		_apply_crouch_pose()
 	elif airborne:
-		_play("jump")
+		if Input.is_action_pressed("move_down"):
+			_apply_jump_down_fire_pose()
+		elif Input.is_action_pressed("move_up"):
+			_apply_jump_up_pose()
+		else:
+			_play("jump")
 	elif aim == Aim.DIAGONAL:
 		_play("walk_aim_up")
 	elif aim == Aim.UP:
@@ -110,10 +116,12 @@ func _physics_process(delta: float) -> void:
 
 
 func _current_aim(direction: float, airborne: bool) -> int:
-	# Airborne always draws the jump sheet's forward-facing frame, so the shot
-	# has to go forward too or the pose would lie about where you are aiming.
-	if airborne or not Input.is_action_pressed("move_up"):
+	# Airborne can now use an up-facing jump pose, so holding up should also aim
+	# shots upward while in the air.
+	if not Input.is_action_pressed("move_up"):
 		return Aim.FORWARD
+	if airborne:
+		return Aim.UP
 	return Aim.DIAGONAL if direction != 0.0 else Aim.UP
 
 
@@ -171,6 +179,24 @@ func _apply_crouch_pose() -> void:
 	sprite.hframes = 5
 	sprite.frame = 2
 	sprite.offset = Vector2(-1.75, -16)
+
+
+func _apply_jump_up_pose() -> void:
+	# Sprite #5 is frame index 4 (Godot frames are zero-based).
+	anim.stop()
+	sprite.texture = JumpTexture
+	sprite.hframes = 5
+	sprite.frame = 4
+	sprite.offset = Vector2(-0.5, -16)
+
+
+func _apply_jump_down_fire_pose() -> void:
+	# Sprite #1 is frame index 0 (Godot frames are zero-based).
+	anim.stop()
+	sprite.texture = JumpTexture
+	sprite.hframes = 5
+	sprite.frame = 0
+	sprite.offset = Vector2(-0.5, -16)
 
 
 func _apply_damage_pose() -> void:
