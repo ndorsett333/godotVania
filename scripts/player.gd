@@ -7,6 +7,8 @@ const CrouchTexture := preload("res://assets/sprites/player/Voidster_Crouch_R.pn
 # two can never disagree.
 enum Aim { FORWARD, DIAGONAL, UP }
 
+signal health_changed(current_health, max_health)
+
 export var speed := 130.0
 export var gravity := 900.0
 # Tuned so the soles clear the 31px-tall standing silhouette by ~3px at the
@@ -16,13 +18,20 @@ export var gravity := 900.0
 export var jump_velocity := 255.0
 # Minimum seconds between shots, so mashing the key cannot outpace the weapon.
 export var fire_cooldown := 0.25
+export var max_health := 100
 
 onready var sprite := $Sprite
 onready var anim := $AnimationPlayer
 
 var velocity := Vector2.ZERO
+var health := 100
 
 var _fire_cooldown_left := 0.0
+
+
+func _ready() -> void:
+	health = max_health
+	emit_signal("health_changed", health, max_health)
 
 
 func _physics_process(delta: float) -> void:
@@ -137,3 +146,16 @@ func _apply_crouch_pose() -> void:
 	sprite.hframes = 5
 	sprite.frame = 2
 	sprite.offset = Vector2(-1.75, -16)
+
+
+func set_health(value: int) -> void:
+	health = int(clamp(value, 0, max_health))
+	emit_signal("health_changed", health, max_health)
+
+
+func take_damage(amount: int) -> void:
+	set_health(health - max(amount, 0))
+
+
+func heal(amount: int) -> void:
+	set_health(health + max(amount, 0))
