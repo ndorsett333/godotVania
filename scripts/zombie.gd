@@ -58,7 +58,6 @@ func on_blaster_hit() -> void:
 	if _is_dying:
 		return
 
-	print("Zombie hit callback fired")
 	_is_dying = true
 	velocity = Vector2.ZERO
 	body_collision.disabled = true
@@ -89,7 +88,6 @@ func _show_hit_frame(index: int) -> void:
 	sprite.hframes = 13
 	sprite.vframes = 6
 	sprite.frame = _hit_frames[index]
-	print("Zombie showing hit frame ", index, " -> ", sprite.frame)
 
 
 func _apply_touch_damage() -> void:
