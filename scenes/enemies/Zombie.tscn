@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=2]
+[gd_scene load_steps=7 format=2]
 
 [ext_resource path="res://assets/sprites/enemies/Zombie.png" type="Texture" id=1]
 [ext_resource path="res://scripts/zombie.gd" type="Script" id=2]
@@ -39,6 +39,9 @@ tracks/0/keys = {
 "values": [ 28, 29, 30 ]
 }
 
+[sub_resource type="RectangleShape2D" id=4]
+extents = Vector2( 7, 13 )
+
 [node name="Zombie" type="KinematicBody2D" groups=[
 "enemies",
 ]]
@@ -63,3 +66,9 @@ cast_to = Vector2( 0, 10 )
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 anims/hit = SubResource( 3 )
 anims/walk = SubResource( 2 )
+
+[node name="TouchArea" type="Area2D" parent="."]
+position = Vector2( 0, -13 )
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TouchArea"]
+shape = SubResource( 4 )

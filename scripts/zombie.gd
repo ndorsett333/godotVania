@@ -9,6 +9,7 @@ onready var sprite := $Sprite
 onready var anim := $AnimationPlayer
 onready var ledge_check := $LedgeCheck
 onready var body_collision := $CollisionShape2D
+onready var touch_area := $TouchArea
 
 # -1 walks left. Placed at the right end of the floor, so it sets off inward.
 var direction := -1.0
@@ -94,12 +95,7 @@ func _apply_touch_damage() -> void:
 	if _touch_damage_cooldown_left > 0.0:
 		return
 
-	for i in range(get_slide_count()):
-		var collision := get_slide_collision(i)
-		if collision == null:
-			continue
-
-		var body := collision.collider
+	for body in touch_area.get_overlapping_bodies():
 		if body and body.has_method("take_damage"):
 			body.take_damage(touch_damage)
 			_touch_damage_cooldown_left = touch_damage_interval
