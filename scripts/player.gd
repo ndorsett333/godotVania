@@ -2,6 +2,7 @@ extends KinematicBody2D
 
 const Blaster := preload("res://scenes/projectiles/Blaster.tscn")
 const CrouchTexture := preload("res://assets/sprites/player/Voidster_Crouch_R.png")
+const DamageTexture := preload("res://assets/sprites/player/Voidster_Damage_R.png")
 
 # Which way the weapon points. Drives both the pose and where shots go, so the
 # two can never disagree.
@@ -19,6 +20,7 @@ export var jump_velocity := 255.0
 # Minimum seconds between shots, so mashing the key cannot outpace the weapon.
 export var fire_cooldown := 0.25
 export var max_health := 100
+export var damage_flash_duration := 0.18
 
 onready var sprite := $Sprite
 onready var anim := $AnimationPlayer
@@ -27,6 +29,7 @@ var velocity := Vector2.ZERO
 var health := 100
 
 var _fire_cooldown_left := 0.0
+var _damage_flash_left := 0.0
 
 
 func _ready() -> void:
@@ -35,6 +38,8 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_damage_flash_left = max(0.0, _damage_flash_left - delta)
+
 	var direction := Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
 	var wants_crouch := Input.is_action_pressed("move_down")
 	var crouching := wants_crouch and is_on_floor()
@@ -70,7 +75,9 @@ func _physics_process(delta: float) -> void:
 	# five aim angles of a single airborne pose, so it has its own grid width.
 	# Every animation therefore keys its own texture, hframes and offset, since
 	# the sheets differ in column count and in how they centre the body.
-	if crouching:
+	if _damage_flash_left > 0.0:
+		_apply_damage_pose()
+	elif crouching:
 		_apply_crouch_pose()
 	elif airborne:
 		_play("jump")
@@ -148,13 +155,30 @@ func _apply_crouch_pose() -> void:
 	sprite.offset = Vector2(-1.75, -16)
 
 
+func _apply_damage_pose() -> void:
+	anim.stop()
+	sprite.texture = DamageTexture
+	sprite.hframes = 2
+	sprite.offset = Vector2(-1.75, -16)
+	var halfway := damage_flash_duration * 0.5
+	# Show sprite #2 first, then sprite #1.
+	sprite.frame = 1 if _damage_flash_left > halfway else 0
+
+
 func set_health(value: int) -> void:
 	health = int(clamp(value, 0, max_health))
 	emit_signal("health_changed", health, max_health)
 
 
 func take_damage(amount: int) -> void:
-	set_health(health - max(amount, 0))
+	var damage := max(amount, 0)
+	if damage == 0:
+		return
+
+	var previous_health := health
+	set_health(health - damage)
+	if health < previous_health:
+		_damage_flash_left = damage_flash_duration
 
 
 func heal(amount: int) -> void:
