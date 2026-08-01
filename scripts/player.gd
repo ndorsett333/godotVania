@@ -7,7 +7,7 @@ const JumpTexture := preload("res://assets/sprites/player/Voidster_Jump_R.png")
 
 # Which way the weapon points. Drives both the pose and where shots go, so the
 # two can never disagree.
-enum Aim { FORWARD, DIAGONAL, UP }
+enum Aim { FORWARD, DIAGONAL, UP, DOWN }
 
 signal health_changed(current_health, max_health)
 
@@ -116,6 +116,9 @@ func _physics_process(delta: float) -> void:
 
 
 func _current_aim(direction: float, airborne: bool) -> int:
+	if airborne and Input.is_action_pressed("move_down"):
+		return Aim.DOWN
+
 	# Airborne can now use an up-facing jump pose, so holding up should also aim
 	# shots upward while in the air.
 	if not Input.is_action_pressed("move_up"):
@@ -133,6 +136,8 @@ func _muzzle(aim: int, crouching: bool) -> Vector2:
 		return Vector2(10, -16)
 
 	match aim:
+		Aim.DOWN:
+			return Vector2(2, -6)
 		Aim.UP:
 			return Vector2(-1, -37)
 		Aim.DIAGONAL:
@@ -143,6 +148,8 @@ func _muzzle(aim: int, crouching: bool) -> Vector2:
 
 func _aim_vector(aim: int) -> Vector2:
 	match aim:
+		Aim.DOWN:
+			return Vector2(0, 1)
 		Aim.UP:
 			return Vector2(0, -1)
 		Aim.DIAGONAL:
