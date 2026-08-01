@@ -8,20 +8,35 @@ export var touch_damage_interval := 0.5
 onready var sprite := $Sprite
 onready var anim := $AnimationPlayer
 onready var ledge_check := $LedgeCheck
+onready var body_collision := $CollisionShape2D
 
 # -1 walks left. Placed at the right end of the floor, so it sets off inward.
 var direction := -1.0
 
 var velocity := Vector2.ZERO
 var _touch_damage_cooldown_left := 0.0
+var _is_dying := false
+var _hit_frames := [41, 42, 43]
+var _hit_frame_index := 0
+var _hit_frame_timer := 0.0
+var _hit_frame_durations := [0.4, 0.4, 0.6]
 
 
 func _ready() -> void:
+	pause_mode = Node.PAUSE_MODE_PROCESS
 	_face(direction)
 	anim.play("walk")
 
 
+func _process(delta: float) -> void:
+	if _is_dying:
+		_update_hit_sequence(delta)
+
+
 func _physics_process(delta: float) -> void:
+	if _is_dying:
+		return
+
 	_touch_damage_cooldown_left = max(0.0, _touch_damage_cooldown_left - delta)
 
 	velocity.x = direction * speed
@@ -37,6 +52,44 @@ func _physics_process(delta: float) -> void:
 	# body, so it loses the floor a moment before the body would walk off it.
 	if is_on_wall() or not ledge_check.is_colliding():
 		_face(-direction)
+
+
+func on_blaster_hit() -> void:
+	if _is_dying:
+		return
+
+	print("Zombie hit callback fired")
+	_is_dying = true
+	velocity = Vector2.ZERO
+	body_collision.disabled = true
+	ledge_check.enabled = false
+	anim.stop(true)
+	_hit_frame_index = 0
+	_hit_frame_timer = 0.0
+	_show_hit_frame(0)
+
+
+func _update_hit_sequence(delta: float) -> void:
+	_hit_frame_timer += delta
+	var duration = _hit_frame_durations[_hit_frame_index]
+	if _hit_frame_timer < duration:
+		return
+
+	_hit_frame_index += 1
+	if _hit_frame_index >= _hit_frames.size():
+		queue_free()
+		return
+
+	_hit_frame_timer = 0.0
+	_show_hit_frame(_hit_frame_index)
+
+
+func _show_hit_frame(index: int) -> void:
+	sprite.visible = true
+	sprite.hframes = 13
+	sprite.vframes = 6
+	sprite.frame = _hit_frames[index]
+	print("Zombie showing hit frame ", index, " -> ", sprite.frame)
 
 
 func _apply_touch_damage() -> void:

@@ -19,7 +19,10 @@ func _handle_hit(collider: Object) -> void:
 		return
 
 	if node and node.is_in_group("enemies"):
-		node.queue_free()
+		if node.has_method("on_blaster_hit"):
+			node.on_blaster_hit()
+		else:
+			node.queue_free()
 
 	queue_free()
 
