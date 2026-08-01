@@ -1,6 +1,7 @@
 extends KinematicBody2D
 
 const Blaster := preload("res://scenes/projectiles/Blaster.tscn")
+const CrouchTexture := preload("res://assets/sprites/player/Voidster_Crouch_R.png")
 
 # Which way the weapon points. Drives both the pose and where shots go, so the
 # two can never disagree.
@@ -26,8 +27,10 @@ var _fire_cooldown_left := 0.0
 
 func _physics_process(delta: float) -> void:
 	var direction := Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
+	var wants_crouch := Input.is_action_pressed("move_down")
+	var crouching := wants_crouch and is_on_floor()
 
-	velocity.x = direction * speed
+	velocity.x = 0.0 if crouching else direction * speed
 	velocity.y += gravity * delta
 
 	# is_on_floor() reports the previous move_and_slide, which is what we want:
@@ -46,10 +49,11 @@ func _physics_process(delta: float) -> void:
 
 	var airborne := not is_on_floor()
 	var aim := _current_aim(direction, airborne)
+	crouching = not airborne and wants_crouch
 
 	_fire_cooldown_left = max(0.0, _fire_cooldown_left - delta)
 	if Input.is_action_just_pressed("fire") and _fire_cooldown_left == 0.0:
-		_fire(aim)
+		_fire(aim, crouching)
 		_fire_cooldown_left = fire_cooldown
 
 	# The walk and run sheets share a layout: three aim angles, four frames each
@@ -57,7 +61,9 @@ func _physics_process(delta: float) -> void:
 	# five aim angles of a single airborne pose, so it has its own grid width.
 	# Every animation therefore keys its own texture, hframes and offset, since
 	# the sheets differ in column count and in how they centre the body.
-	if airborne:
+	if crouching:
+		_apply_crouch_pose()
+	elif airborne:
 		_play("jump")
 	elif aim == Aim.DIAGONAL:
 		_play("walk_aim_up")
@@ -79,7 +85,11 @@ func _current_aim(direction: float, airborne: bool) -> int:
 
 # Barrel tip for each pose, measured off the sprite sheets, in local pixels
 # with the character facing right.
-func _muzzle(aim: int) -> Vector2:
+func _muzzle(aim: int, crouching: bool) -> Vector2:
+	if crouching:
+		# Tuned so the bolt starts from the crouched hand instead of chest height.
+		return Vector2(10, -16)
+
 	match aim:
 		Aim.UP:
 			return Vector2(-1, -37)
@@ -99,10 +109,10 @@ func _aim_vector(aim: int) -> Vector2:
 			return Vector2(1, 0)
 
 
-func _fire(aim: int) -> void:
+func _fire(aim: int, crouching: bool) -> void:
 	var facing := -1.0 if sprite.scale.x < 0.0 else 1.0
 
-	var muzzle := _muzzle(aim)
+	var muzzle := _muzzle(aim, crouching)
 	muzzle.x *= facing
 
 	var dir := _aim_vector(aim)
@@ -118,3 +128,12 @@ func _fire(aim: int) -> void:
 func _play(name: String) -> void:
 	if anim.current_animation != name:
 		anim.play(name)
+
+
+func _apply_crouch_pose() -> void:
+	# Sprite #3 is frame index 2 (Godot frames are zero-based).
+	anim.stop()
+	sprite.texture = CrouchTexture
+	sprite.hframes = 5
+	sprite.frame = 2
+	sprite.offset = Vector2(-1.75, -16)
