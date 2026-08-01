@@ -21,23 +21,41 @@ export var jump_velocity := 255.0
 export var fire_cooldown := 0.25
 export var max_health := 100
 export var damage_flash_duration := 0.18
+export var death_hold_duration := 1.0
+export var death_flash_duration := 1.0
+export var death_flash_interval := 0.1
 
 onready var sprite := $Sprite
 onready var anim := $AnimationPlayer
+onready var body_collision := $CollisionShape2D
 
 var velocity := Vector2.ZERO
 var health := 100
 
 var _fire_cooldown_left := 0.0
 var _damage_flash_left := 0.0
+var _is_dead := false
+var _death_phase := 0
+var _death_timer := 0.0
+var _death_flash_timer := 0.0
+var _death_show_second_sprite := true
 
 
 func _ready() -> void:
+	pause_mode = Node.PAUSE_MODE_PROCESS
 	health = max_health
 	emit_signal("health_changed", health, max_health)
 
 
+func _process(delta: float) -> void:
+	if _is_dead:
+		_update_death_sequence(delta)
+
+
 func _physics_process(delta: float) -> void:
+	if _is_dead:
+		return
+
 	_damage_flash_left = max(0.0, _damage_flash_left - delta)
 
 	var direction := Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
@@ -165,12 +183,59 @@ func _apply_damage_pose() -> void:
 	sprite.frame = 1 if _damage_flash_left > halfway else 0
 
 
+func _apply_death_pose() -> void:
+	anim.stop()
+	sprite.texture = DamageTexture
+	sprite.hframes = 2
+	sprite.offset = Vector2(-1.75, -16)
+	# Sprite #1 on the damage sheet is frame index 0.
+	sprite.frame = 0
+
+
+func _apply_death_flash_pose() -> void:
+	anim.stop()
+	sprite.texture = DamageTexture
+	sprite.hframes = 2
+	sprite.offset = Vector2(-1.75, -16)
+	# Flash sprite #2 over sprite #1.
+	sprite.frame = 1 if _death_show_second_sprite else 0
+
+
+func _update_death_sequence(delta: float) -> void:
+	if _death_phase == 1:
+		sprite.visible = true
+		_apply_death_pose()
+		_death_timer = max(0.0, _death_timer - delta)
+		if _death_timer == 0.0:
+			_death_phase = 2
+			_death_timer = death_flash_duration
+			_death_flash_timer = 0.0
+			_death_show_second_sprite = true
+		return
+
+	if _death_phase == 2:
+		sprite.visible = true
+		_death_timer = max(0.0, _death_timer - delta)
+		_death_flash_timer -= delta
+		if _death_flash_timer <= 0.0:
+			_death_show_second_sprite = not _death_show_second_sprite
+			_death_flash_timer = death_flash_interval
+		_apply_death_flash_pose()
+		if _death_timer == 0.0:
+			_death_phase = 3
+			sprite.visible = false
+			body_collision.disabled = true
+
+
 func set_health(value: int) -> void:
 	health = int(clamp(value, 0, max_health))
 	emit_signal("health_changed", health, max_health)
 
 
 func take_damage(amount: int) -> void:
+	if _is_dead:
+		return
+
 	var damage := max(amount, 0)
 	if damage == 0:
 		return
@@ -180,6 +245,33 @@ func take_damage(amount: int) -> void:
 	if health < previous_health:
 		_damage_flash_left = damage_flash_duration
 
+	if health == 0:
+		_die()
+
 
 func heal(amount: int) -> void:
+	if _is_dead:
+		return
+
 	set_health(health + max(amount, 0))
+
+
+func _die() -> void:
+	if _is_dead:
+		return
+
+	_is_dead = true
+	_damage_flash_left = 0.0
+	_death_phase = 1
+	_death_timer = death_hold_duration
+	_death_flash_timer = 0.0
+	_death_show_second_sprite = true
+	_apply_death_pose()
+
+	# Pause one frame later so the death pose is rendered first.
+	call_deferred("_freeze_world")
+
+
+func _freeze_world() -> void:
+	# The death pose stays visible while gameplay is paused.
+	get_tree().paused = true
