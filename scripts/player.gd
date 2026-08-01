@@ -112,7 +112,7 @@ func _fire(aim: int) -> void:
 	# Parent to the level, not to the player, so shots keep their own course
 	# instead of being dragged along by whatever the player does next.
 	get_parent().add_child(bolt)
-	bolt.launch(global_position + muzzle, dir)
+	bolt.launch(global_position + muzzle, dir, self)
 
 
 func _play(name: String) -> void:
