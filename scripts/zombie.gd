@@ -26,7 +26,7 @@ var _hit_frame_durations := [0.4, 0.4, 0.6]
 func _ready() -> void:
 	pause_mode = Node.PAUSE_MODE_PROCESS
 	_face(direction)
-	anim.play("walk")
+	_play("walk")
 
 
 func _process(delta: float) -> void:
@@ -43,6 +43,7 @@ func _physics_process(delta: float) -> void:
 	velocity.x = direction * speed
 	velocity.y += gravity * delta
 	velocity = move_and_slide(velocity, Vector2.UP)
+	_update_contact_animation(_is_touching_damageable_body())
 	_apply_touch_damage()
 
 	if not is_on_floor():
@@ -100,6 +101,22 @@ func _apply_touch_damage() -> void:
 			body.take_damage(touch_damage)
 			_touch_damage_cooldown_left = touch_damage_interval
 			return
+
+
+func _is_touching_damageable_body() -> bool:
+	for body in touch_area.get_overlapping_bodies():
+		if body and body.has_method("take_damage"):
+			return true
+	return false
+
+
+func _update_contact_animation(touching_damageable: bool) -> void:
+	_play("contact" if touching_damageable else "walk")
+
+
+func _play(name: String) -> void:
+	if anim.current_animation != name:
+		anim.play(name)
 
 
 func _face(dir: float) -> void:
