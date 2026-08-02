@@ -1,6 +1,6 @@
 extends KinematicBody2D
 
-export var speed := 70.0
+export var speed := 45.0
 export var gravity := 900.0
 export var touch_damage := 10
 export var touch_damage_interval := 0.5
@@ -20,7 +20,7 @@ var _is_dying := false
 var _hit_frames := [41, 42, 43]
 var _hit_frame_index := 0
 var _hit_frame_timer := 0.0
-var _hit_frame_durations := [0.4, 0.4, 0.6]
+var _hit_frame_durations := [0.12, 0.12, 0.18]
 
 
 func _ready() -> void:
