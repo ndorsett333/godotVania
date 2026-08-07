@@ -5,6 +5,8 @@ export var gravity := 900.0
 export var touch_damage := 10
 export var touch_damage_interval := 0.5
 
+var health := 20
+
 onready var sprite := $Sprite
 onready var anim := $AnimationPlayer
 onready var ledge_check := $LedgeCheck
@@ -56,6 +58,21 @@ func _physics_process(delta: float) -> void:
 		_face(-direction)
 
 
+func take_damage(amount: int) -> void:
+	if _is_dying:
+		return
+
+	var damage := int(max(amount, 0))
+	if damage == 0:
+		return
+
+	health -= damage
+	if health > 0:
+		return
+
+	on_blaster_hit()
+
+
 func on_blaster_hit() -> void:
 	if _is_dying:
 		return
@@ -97,7 +114,7 @@ func _apply_touch_damage() -> void:
 		return
 
 	for body in touch_area.get_overlapping_bodies():
-		if body and body.has_method("take_damage"):
+		if body and body != self and body.has_method("take_damage"):
 			body.take_damage(touch_damage)
 			_touch_damage_cooldown_left = touch_damage_interval
 			return
@@ -105,7 +122,7 @@ func _apply_touch_damage() -> void:
 
 func _is_touching_damageable_body() -> bool:
 	for body in touch_area.get_overlapping_bodies():
-		if body and body.has_method("take_damage"):
+		if body and body != self and body.has_method("take_damage"):
 			return true
 	return false
 

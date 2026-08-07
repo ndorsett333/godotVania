@@ -274,7 +274,7 @@ func take_damage(amount: int) -> void:
 		return
 
 	var previous_health := health
-	set_health(health - damage)
+	set_health(int(health - damage))
 	if health < previous_health:
 		_damage_flash_left = damage_flash_duration
 
@@ -286,7 +286,7 @@ func heal(amount: int) -> void:
 	if _is_dead:
 		return
 
-	set_health(health + max(amount, 0))
+	set_health(int(health + max(amount, 0)))
 
 
 func _die() -> void:

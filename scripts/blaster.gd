@@ -2,32 +2,40 @@ extends Area2D
 
 export var speed := 300.0
 export var max_distance := 400.0
+export var damage := 10
 
 var direction := Vector2.RIGHT
 var _shooter: Node = null
 
 var _travelled := 0.0
+var _has_hit := false
 
 
 func _ready() -> void:
-	connect("body_entered", self, "_on_body_entered")
+	var err := connect("body_entered", self, "_on_body_entered")
+	if err != OK:
+		push_error("Failed to connect blaster hit signal: %s" % err)
 
 
 func _handle_hit(collider: Object) -> void:
+	if _has_hit:
+		return
+
+	_has_hit = true
 	var node := collider as Node
 	if node and node == _shooter:
 		return
 
 	if node and node.is_in_group("enemies"):
-		if node.has_method("on_blaster_hit"):
+		if node.has_method("take_damage"):
+			node.take_damage(damage)
+		elif node.has_method("on_blaster_hit"):
 			node.on_blaster_hit()
 		else:
 			node.queue_free()
 
 	queue_free()
 
-
-# One hit is fatal; there is no health to subtract from yet.
 func _on_body_entered(body: Node) -> void:
 	_handle_hit(body)
 
