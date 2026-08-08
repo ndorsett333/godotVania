@@ -31,7 +31,6 @@ var _hit_frame_durations := [0.12, 0.12, 0.18]
 
 
 func _ready() -> void:
-	pause_mode = Node.PAUSE_MODE_PROCESS
 	_face(direction)
 	_play("sleep")
 

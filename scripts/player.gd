@@ -54,6 +54,11 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# The player keeps processing while paused so the death sequence can play, so
+	# it has to opt out of taking input itself.
+	if get_tree().paused:
+		return
+
 	if _is_dead:
 		return
 
