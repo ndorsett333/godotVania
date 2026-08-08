@@ -1,5 +1,12 @@
 extends KinematicBody2D
 
+# While dormant it sits on its own physics layer. Blaster bolts only scan layer
+# 1, so they fly straight through a sleeper instead of hitting it; waking moves
+# it back onto the layer everything else looks at. Its mask is untouched either
+# way, so it keeps standing on the floor throughout.
+const DORMANT_LAYER := 2
+const ACTIVE_LAYER := 1
+
 export var speed := 45.0
 export var gravity := 900.0
 export var touch_damage := 10
@@ -31,6 +38,7 @@ var _hit_frame_durations := [0.12, 0.12, 0.18]
 
 
 func _ready() -> void:
+	collision_layer = DORMANT_LAYER
 	_face(direction)
 	_play("sleep")
 
@@ -73,6 +81,7 @@ func _check_for_wake() -> void:
 		return
 
 	_is_awake = true
+	collision_layer = ACTIVE_LAYER
 	_face_target()
 	_play("walk")
 
@@ -117,7 +126,9 @@ func _is_ledge_ahead() -> bool:
 
 
 func take_damage(amount: int) -> void:
-	if _is_dying:
+	# Nothing can reach it on the dormant layer, but guard here too so a future
+	# damage source cannot kill it in its sleep by accident.
+	if not _is_awake or _is_dying:
 		return
 
 	var damage := int(max(amount, 0))
@@ -132,12 +143,14 @@ func take_damage(amount: int) -> void:
 
 
 func on_blaster_hit() -> void:
-	if _is_dying:
+	if not _is_awake or _is_dying:
 		return
 
 	_is_dying = true
 	velocity = Vector2.ZERO
-	body_collision.disabled = true
+	# The kill can arrive from the bolt's body_entered signal, which fires while
+	# the physics server is flushing queries and refuses shape edits. Defer it.
+	body_collision.set_deferred("disabled", true)
 	ledge_check.enabled = false
 	anim.stop(true)
 	_hit_frame_index = 0

@@ -78,7 +78,9 @@ func on_blaster_hit() -> void:
 
 	_is_dying = true
 	velocity = Vector2.ZERO
-	body_collision.disabled = true
+	# The kill can arrive from the bolt's body_entered signal, which fires while
+	# the physics server is flushing queries and refuses shape edits. Defer it.
+	body_collision.set_deferred("disabled", true)
 	ledge_check.enabled = false
 	anim.stop(true)
 	_hit_frame_index = 0

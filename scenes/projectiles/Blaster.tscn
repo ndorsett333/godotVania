@@ -23,6 +23,8 @@ tracks/0/keys = {
 }
 
 [node name="Blaster" type="Area2D"]
+collision_layer = 0
+collision_mask = 1
 script = ExtResource( 2 )
 
 [node name="Sprite" type="Sprite" parent="."]
