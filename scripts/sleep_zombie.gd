@@ -4,6 +4,8 @@ export var speed := 45.0
 export var gravity := 900.0
 export var touch_damage := 10
 export var touch_damage_interval := 0.5
+# Measured origin to origin, so effectively floor-level distance between the two.
+export var wake_radius := 48.0
 
 var health := 20
 
@@ -19,9 +21,10 @@ var direction := -1.0
 var velocity := Vector2.ZERO
 var _touch_damage_cooldown_left := 0.0
 var _is_dying := false
-# Placeholder: the sleep zombie has no art of its own yet, so every state sits
-# on frame 72. Swap these for the real death frames once the sheet exists.
-var _hit_frames := [72, 72, 72]
+# Sleeps until the player comes inside wake_radius, then hunts them for good.
+var _is_awake := false
+var _target: Node2D = null
+var _hit_frames := [41, 42, 43]
 var _hit_frame_index := 0
 var _hit_frame_timer := 0.0
 var _hit_frame_durations := [0.12, 0.12, 0.18]
@@ -30,7 +33,7 @@ var _hit_frame_durations := [0.12, 0.12, 0.18]
 func _ready() -> void:
 	pause_mode = Node.PAUSE_MODE_PROCESS
 	_face(direction)
-	_play("walk")
+	_play("sleep")
 
 
 func _process(delta: float) -> void:
@@ -42,22 +45,76 @@ func _physics_process(delta: float) -> void:
 	if _is_dying:
 		return
 
+	velocity.y += gravity * delta
+
+	if not _is_awake:
+		# Dormant: gravity still settles it onto the floor, but it neither walks
+		# nor bites until the player strays close enough to wake it.
+		velocity.x = 0.0
+		velocity = move_and_slide(velocity, Vector2.UP)
+		_check_for_wake()
+		return
+
 	_touch_damage_cooldown_left = max(0.0, _touch_damage_cooldown_left - delta)
 
-	velocity.x = direction * speed
-	velocity.y += gravity * delta
+	# Awake it hunts rather than patrols, so it re-aims at the player every frame
+	# instead of turning around at obstacles.
+	_face_target()
+	velocity.x = 0.0 if _is_ledge_ahead() else direction * speed
 	velocity = move_and_slide(velocity, Vector2.UP)
 	_update_contact_animation(_is_touching_damageable_body())
 	_apply_touch_damage()
 
-	if not is_on_floor():
+
+func _check_for_wake() -> void:
+	if not _resolve_target():
 		return
 
-	# Turn on hitting a barrier, or when the ground runs out under the leading
-	# foot. The ledge ray sits 8px ahead of centre, just outside the 12px-wide
-	# body, so it loses the floor a moment before the body would walk off it.
-	if is_on_wall() or not ledge_check.is_colliding():
-		_face(-direction)
+	if global_position.distance_to(_target.global_position) > wake_radius:
+		return
+
+	_is_awake = true
+	_face_target()
+	_play("walk")
+
+
+func _resolve_target() -> bool:
+	if _target and is_instance_valid(_target):
+		return true
+
+	_target = null
+	var players := get_tree().get_nodes_in_group("player")
+	if players.empty():
+		return false
+
+	_target = players[0]
+	return true
+
+
+func _face_target() -> void:
+	if not _resolve_target():
+		return
+
+	var dx := _target.global_position.x - global_position.x
+	# Deadband: without it the sprite flips every frame while the player stands
+	# directly on top of it.
+	if abs(dx) < 2.0:
+		return
+
+	_face(-1.0 if dx < 0.0 else 1.0)
+
+
+# Walls stop it on their own via move_and_slide, but a ledge would let it walk
+# straight off the platform chasing the player, so hold position at the edge.
+# The ray sits 8px ahead of centre, just outside the 12px-wide body, so it loses
+# the floor a moment before the body would.
+func _is_ledge_ahead() -> bool:
+	if not is_on_floor():
+		return false
+
+	# _face just moved the ray; without this it would answer for the old side.
+	ledge_check.force_raycast_update()
+	return not ledge_check.is_colliding()
 
 
 func take_damage(amount: int) -> void:

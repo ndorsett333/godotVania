@@ -270,7 +270,9 @@ tracks/3/keys = {
 "values": [ Vector2( -0.5, -16 ) ]
 }
 
-[node name="Player" type="KinematicBody2D"]
+[node name="Player" type="KinematicBody2D" groups=[
+"player",
+]]
 script = ExtResource( 2 )
 
 [node name="Sprite" type="Sprite" parent="."]
