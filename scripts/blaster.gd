@@ -21,11 +21,13 @@ func _handle_hit(collider: Object) -> void:
 	if _has_hit:
 		return
 
-	_has_hit = true
 	var node := collider as Node
+	# The muzzle sits inside the player's own body on the down and crouch aims,
+	# so pass through the shooter without spending the bolt's one hit.
 	if node and node == _shooter:
 		return
 
+	_has_hit = true
 	if node and node.is_in_group("enemies"):
 		if node.has_method("take_damage"):
 			node.take_damage(damage)
@@ -52,6 +54,11 @@ func launch(from: Vector2, dir: Vector2, shooter: Node = null) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# A spent bolt is already queued for deletion; it must not keep stepping and
+	# re-resolving its hit, which is what pinned it inside a tile.
+	if _has_hit:
+		return
+
 	var step := direction * speed * delta
 	var from := global_position
 	var to := from + step
